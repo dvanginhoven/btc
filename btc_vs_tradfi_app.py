@@ -30,7 +30,7 @@ end_date = datetime.today().strftime('%Y-%m-%d')
 # Download historical data
 data = yf.download(list(tickers.values()), start=start_date, end=end_date)
 
-# Handle MultiIndex vs flat columns safely
+# Cleanly handle MultiIndex vs flat column structures
 try:
     if isinstance(data.columns, pd.MultiIndex):
         if 'Adj Close' in data.columns.get_level_values(0):
@@ -38,25 +38,27 @@ try:
         elif 'Close' in data.columns.get_level_values(0):
             data = data['Close']
         else:
-            st.error("'Adj Close' or 'Close' not found in MultiIndex data.")
+            st.error("No 'Adj Close' or 'Close' found in MultiIndex data.")
             st.stop()
     elif 'Adj Close' in data.columns:
-        data = data[['Adj Close']]  # ensure DataFrame
+        pass  # Already fine
     elif 'Close' in data.columns:
-        data = data[['Close']]
+        pass  # Acceptable
     else:
-        st.error("Could not find valid price data.")
+        st.error("No 'Adj Close' or 'Close' column found.")
         st.stop()
 except Exception as e:
-    st.error(f"Error handling data format: {e}")
+    st.error(f"Error handling column structure: {e}")
     st.stop()
 
-
-# Rename columns using ticker labels
-try:
-    data.columns = tickers.keys()
-except Exception as e:
-    st.warning(f"Could not rename columns: {e}")
+# Only rename columns if counts match
+if len(data.columns) == len(tickers):
+    try:
+        data.columns = tickers.keys()
+    except Exception as e:
+        st.warning(f"Could not rename columns: {e}")
+else:
+    st.warning("Skipping column renaming due to mismatch in dimensions.")
 
 # Drop any assets that failed to load
 data = data.dropna(axis=1, how='all')
