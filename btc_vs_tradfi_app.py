@@ -20,7 +20,7 @@ tickers = {
     '5 Year Treasuries': 'IEI',
     '10 Year Treasuries': 'IEF',
     'Residential Real Estate': 'VNQ',
-    'Vacant Land': 'CAMP',  # Proxy
+    # 'Vacant Land': 'CAMP',  # Removed due to missing or invalid data
     'Commercial Real Estate': 'ICF'
 }
 
@@ -29,7 +29,13 @@ start_date = '2023-01-01'
 end_date = datetime.today().strftime('%Y-%m-%d')
 
 # Download historical data
-data = yf.download(list(tickers.values()), start=start_date, end=end_date)['Adj Close']
+data = yf.download(list(tickers.values()), start=start_date, end=end_date)
+
+# Handle multi-index and missing 'Adj Close'
+if isinstance(data.columns, pd.MultiIndex):
+    data = data['Adj Close']
+
+# Rename columns based on ticker dictionary
 data.columns = tickers.keys()
 
 # Normalize performance to % change from start date
@@ -56,3 +62,4 @@ st.pyplot(fig)
 # Footer
 st.markdown("---")
 st.markdown("Built by David VanGinhoven to track how everything is going to 0... compared to Bitcoin 🚀")
+
