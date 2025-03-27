@@ -27,6 +27,9 @@ tickers = {
 start_date = '2023-01-01'
 end_date = datetime.today().strftime('%Y-%m-%d')
 
+# Download historical data
+data = yf.download(list(tickers.values()), start=start_date, end=end_date)
+
 # Handle both flat and MultiIndex cases safely
 if isinstance(data.columns, pd.MultiIndex):
     try:
@@ -43,12 +46,6 @@ if isinstance(data.columns, pd.MultiIndex):
         st.stop()
 else:
     st.success("✅ Using flat column structure.")
-
-    except Exception as e:
-        st.error(f"Error accessing MultiIndex data: {e}")
-        st.stop()
-else:
-    st.warning("Data came back flat. Using flat column structure.")
 
 # Try renaming columns to readable names
 try:
