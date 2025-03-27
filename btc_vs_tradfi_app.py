@@ -30,14 +30,15 @@ end_date = datetime.today().strftime('%Y-%m-%d')
 # Download historical data
 data = yf.download(list(tickers.values()), start=start_date, end=end_date)
 
-# Handle multi-index or flat columns
-if isinstance(data.columns, pd.MultiIndex):
+# Safely handle different data structures
+try:
     data = data['Adj Close']
-else:
-    data = data  # Already in correct format
+except KeyError:
+    pass  # Data already in flat format
 
 # Rename columns based on ticker dictionary
-data.columns = tickers.keys()
+if len(data.columns) == len(tickers):
+    data.columns = tickers.keys()
 
 # Normalize performance to % change from start date
 normalized = (data / data.iloc[0] - 1) * 100
@@ -48,7 +49,8 @@ selected_assets = st.multiselect("Select assets to display:", options=list(ticke
 # Plot chart
 fig, ax = plt.subplots(figsize=(14, 7))
 for asset in selected_assets:
-    ax.plot(normalized.index, normalized[asset], label=asset)
+    if asset in normalized:
+        ax.plot(normalized.index, normalized[asset], label=asset)
 
 ax.set_title("BTC vs TradFi Assets Performance (Jan 1, 2023 - Today)")
 ax.set_xlabel("Date")
