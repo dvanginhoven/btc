@@ -20,7 +20,6 @@ tickers = {
     '5 Year Treasuries': 'IEI',
     '10 Year Treasuries': 'IEF',
     'Residential Real Estate': 'VNQ',
-    # 'Vacant Land': 'CAMP',  # Removed due to missing or invalid data
     'Commercial Real Estate': 'ICF'
 }
 
@@ -31,9 +30,11 @@ end_date = datetime.today().strftime('%Y-%m-%d')
 # Download historical data
 data = yf.download(list(tickers.values()), start=start_date, end=end_date)
 
-# Handle multi-index and missing 'Adj Close'
+# Handle multi-index or flat columns
 if isinstance(data.columns, pd.MultiIndex):
     data = data['Adj Close']
+else:
+    data = data  # Already in correct format
 
 # Rename columns based on ticker dictionary
 data.columns = tickers.keys()
