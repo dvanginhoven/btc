@@ -62,4 +62,3 @@ st.pyplot(fig)
 # Footer
 st.markdown("---")
 st.markdown("Built by David VanGinhoven to track how everything is going to 0... compared to Bitcoin 🚀")
-
