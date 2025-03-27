@@ -30,15 +30,21 @@ end_date = datetime.today().strftime('%Y-%m-%d')
 # Download historical data
 data = yf.download(list(tickers.values()), start=start_date, end=end_date)
 
-# Handle both flat and MultiIndex cases
+# Handle both flat and MultiIndex cases safely
 if isinstance(data.columns, pd.MultiIndex):
-    if 'Adj Close' in data.columns.get_level_values(0):
-        data = data['Adj Close']
-    else:
-        st.error("'Adj Close' not found. Available keys: " + ", ".join(set(data.columns.get_level_values(0))))
+    try:
+        if 'Adj Close' in data.columns.levels[0]:
+            data = data['Adj Close']
+        elif 'Close' in data.columns.levels[0]:
+            data = data['Close']
+        else:
+            st.error("Neither 'Adj Close' nor 'Close' found in MultiIndex data.")
+            st.stop()
+    except Exception as e:
+        st.error(f"Error accessing MultiIndex data: {e}")
         st.stop()
 else:
-    st.warning("Data came back flat, using as-is.")
+    st.warning("Data came back flat. Using flat column structure.")
 
 # Try renaming columns to readable names
 try:
