@@ -30,41 +30,36 @@ end_date = datetime.today().strftime('%Y-%m-%d')
 # Download historical data
 data = yf.download(list(tickers.values()), start=start_date, end=end_date)
 
-# Cleanly handle both MultiIndex and flat index from yfinance
+# Handle both flat and MultiIndex cases
 if isinstance(data.columns, pd.MultiIndex):
-    if 'Adj Close' in data.columns:
+    if 'Adj Close' in data.columns.get_level_values(0):
         data = data['Adj Close']
-    elif 'Close' in data.columns:
-        data = data['Close']
     else:
-        st.error("Neither 'Adj Close' nor 'Close' was found in the data.")
+        st.error("'Adj Close' not found. Available keys: " + ", ".join(set(data.columns.get_level_values(0))))
         st.stop()
 else:
-    st.warning("Data is missing expected structure. Displaying as-is.")
+    st.warning("Data came back flat, using as-is.")
 
-# Try renaming columns to readable labels
+# Try renaming columns to readable names
 try:
     data.columns = tickers.keys()
 except Exception as e:
     st.warning(f"Could not rename columns: {e}")
 
-# Drop any columns with missing data to avoid crashing the chart
-data = data.dropna(axis=1)
+# Drop any assets that failed to load
+data = data.dropna(axis=1, how='all')
 
 # Normalize performance to % change from start date
 normalized = (data / data.iloc[0] - 1) * 100
 
-# Let user choose what to display
-selected_assets = st.multiselect(
-    "Select assets to display:",
-    options=list(normalized.columns),
-    default=list(normalized.columns)
-)
+# Select assets to display
+selected_assets = st.multiselect("Select assets to display:", options=list(normalized.columns), default=list(normalized.columns))
 
 # Plot chart
 fig, ax = plt.subplots(figsize=(14, 7))
 for asset in selected_assets:
-    ax.plot(normalized.index, normalized[asset], label=asset)
+    if asset in normalized:
+        ax.plot(normalized.index, normalized[asset], label=asset)
 
 ax.set_title("BTC vs TradFi Assets Performance (Jan 1, 2023 - Today)")
 ax.set_xlabel("Date")
