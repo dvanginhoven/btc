@@ -1,70 +1,55 @@
-# BTC vs TradFi: Live Streamlit Dashboard
 import streamlit as st
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
 import yfinance as yf
-from datetime import datetime
+import pandas as pd
+import matplotlib.pyplot as plt
 
-# Set page config
-st.set_page_config(page_title="BTC vs TradFi", layout="wide")
-st.title("📈 BTC vs Traditional & Real Estate Assets")
-st.markdown("Showing performance since **Jan 1, 2023** — updated live.")
+# --- Page config ---
+st.set_page_config(page_title="BTC vs Traditional Finance", layout="wide")
+st.title("📈 Bitcoin vs Traditional Finance Performance")
 
-# Define asset tickers from Yahoo Finance
-tickers = {
-    'Bitcoin': 'BTC-USD',
-    'S&P 500': '^GSPC',
-    'Gold': 'GC=F',
-    'Crude Oil': 'CL=F',
-    '5 Year Treasuries': 'IEI',
-    '10 Year Treasuries': 'IEF',
-    'Residential Real Estate': 'VNQ',
-    'Commercial Real Estate': 'ICF'
-}
+# --- Ticker selection ---
+default_tickers = ['BTC-USD', '^GSPC', '^IXIC', 'GLD', 'TLT']
+tickers = st.multiselect("Select assets to compare", default_tickers, default=default_tickers)
 
-# Define date range
-start_date = '2023-01-01'
-end_date = datetime.today().strftime('%Y-%m-%d')
+# --- Date range selection ---
+start_date = st.date_input("Start date", pd.to_datetime("2020-01-01"))
+end_date = st.date_input("End date", pd.to_datetime("today"))
 
-# Download historical data
-data = yf.download(list(tickers.values()), start=start_date, end=end_date)
-
-# Try to access 'Adj Close' only if it's a MultiIndex
-if isinstance(data.columns, pd.MultiIndex):
-    try:
+# --- Download data ---
+@st.cache_data
+def fetch_data(tickers, start, end):
+    data = yf.download(tickers, start=start, end=end)
+    
+    # Handle MultiIndex safely
+    if isinstance(data.columns, pd.MultiIndex):
+        try:
+            data = data.xs('Adj Close', level=1, axis=1)
+        except KeyError:
+            st.error("'Adj Close' not found in data.")
+            st.stop()
+    else:
+        if 'Adj Close' not in data.columns:
+            st.error("'Adj Close' not found in data.")
+            st.stop()
         data = data['Adj Close']
-    except KeyError:
-        st.error("'Adj Close' not found in downloaded data. Please check tickers.")
-        st.stop()
+    
+    return data
 
-# Rename columns based on ticker dictionary
-if len(data.columns) == len(tickers):
-    data.columns = tickers.keys()
-else:
-    st.warning("Some tickers may not have returned data. Adjusted for available data only.")
+data = fetch_data(tickers, start_date, end_date)
 
-# Normalize performance to % change from start date
-normalized = (data / data.iloc[0] - 1) * 100
+# --- Normalize prices for % return comparison ---
+normalized_data = data / data.iloc[0] * 100
 
-# Select assets to display
-selected_assets = st.multiselect("Select assets to display:", options=list(normalized.columns), default=list(normalized.columns))
-
-# Plot chart
-fig, ax = plt.subplots(figsize=(14, 7))
-for asset in selected_assets:
-    ax.plot(normalized.index, normalized[asset], label=asset)
-
-ax.set_title("BTC vs TradFi Assets Performance (Jan 1, 2023 - Today)")
+# --- Plotting ---
+st.subheader("Relative Performance (Normalized)")
+fig, ax = plt.subplots(figsize=(12, 6))
+normalized_data.plot(ax=ax)
+ax.set_ylabel("Normalized Value (Start = 100)")
 ax.set_xlabel("Date")
-ax.set_ylabel("Performance (%)")
-ax.axhline(0, color='gray', linewidth=0.5)
-ax.legend()
+ax.set_title("Asset Performance Since Start Date")
 ax.grid(True)
-fig.autofmt_xdate()
-
 st.pyplot(fig)
 
-# Footer
-st.markdown("---")
-st.markdown("Built by David VanGinhoven to track how everything is going to 0... compared to Bitcoin 🚀")
+# --- Display raw data ---
+with st.expander("📊 View Raw Adjusted Close Data"):
+    st.dataframe(data)
