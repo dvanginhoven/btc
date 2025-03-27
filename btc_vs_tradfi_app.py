@@ -31,21 +31,26 @@ end_date = datetime.today().strftime('%Y-%m-%d')
 data = yf.download(list(tickers.values()), start=start_date, end=end_date)
 
 # Handle MultiIndex vs flat columns safely
-if isinstance(data.columns, pd.MultiIndex):
-    if 'Adj Close' in data.columns.get_level_values(0):
-        data = data['Adj Close']
-    elif 'Close' in data.columns.get_level_values(0):
-        data = data['Close']
+try:
+    if isinstance(data.columns, pd.MultiIndex):
+        if 'Adj Close' in data.columns.get_level_values(0):
+            data = data['Adj Close']
+        elif 'Close' in data.columns.get_level_values(0):
+            data = data['Close']
+        else:
+            st.error("'Adj Close' or 'Close' not found in MultiIndex data.")
+            st.stop()
+    elif 'Adj Close' in data.columns:
+        data = data[['Adj Close']]  # ensure DataFrame
+    elif 'Close' in data.columns:
+        data = data[['Close']]
     else:
-        st.error("'Adj Close' or 'Close' not found in MultiIndex data.")
+        st.error("Could not find valid price data.")
         st.stop()
-elif 'Adj Close' in data.columns:
-    pass  # Data is already good
-elif 'Close' in data.columns:
-    pass  # Acceptable
-else:
-    st.error("Could not find valid price data.")
+except Exception as e:
+    st.error(f"Error handling data format: {e}")
     st.stop()
+
 
 # Rename columns using ticker labels
 try:
